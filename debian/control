@@ -1,0 +1,23 @@
+Source: borochid-driver-corsair-v2w
+Section: python
+Priority: optional
+Maintainer: Rodolfo Justiniano <rodolfo@beglaux.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               pybuild-plugin-pyproject,
+               python3-all,
+               python3-setuptools
+Standards-Version: 4.7.0
+Homepage: https://github.com/RalphJS/borochid-driver-corsair-v2w
+Rules-Requires-Root: no
+
+Package: borochid-driver-corsair-v2w
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3-borochid-service (>= 0.1), python3-borochid-service (<< 0.2)
+Description: Borochid driver for Corsair V2W wireless headsets
+ Driver plugin for the Borochid peripheral service. Speaks Corsair's V2W HID
+ protocol (Virtuoso and related wireless headsets): RGB zones, battery and
+ charge state, hardware sidetone and the physical mic-mute button.
+ .
+ Device models are described by signed data packages from the Borochid
+ registry; this package provides the code and the udev access rule.

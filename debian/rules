@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+export PYBUILD_NAME=borochid-driver-corsair-v2w
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+# Single source of truth for the rule: udev/ in the repo.
+execute_before_dh_installudev:
+	cp udev/70-borochid-corsair-v2w.rules debian/borochid-driver-corsair-v2w.udev
+
+execute_after_dh_clean:
+	rm -f debian/borochid-driver-corsair-v2w.udev
+
+# Tests need the service from the Borochid source tree; they run in CI.
+override_dh_auto_test:

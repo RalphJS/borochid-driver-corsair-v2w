@@ -1,0 +1,10 @@
+borochid-driver-corsair-v2w
+Copyright 2026 Rodolfo Justiniano
+
+The V2W protocol behaviour implemented here was learned from:
+
+* VirtuosoControl (MIT), https://github.com/AlejandroSocas/VirtuosoControl
+  by Alejandro Socas and contributors: wire format, handshake deviations,
+  battery filtering, mic-button and software-mode behaviour.
+* HeadsetControl (GPL-3.0), corsair_void_v2w: the original handshake
+  sequence. Only protocol facts were used; no code was copied.
