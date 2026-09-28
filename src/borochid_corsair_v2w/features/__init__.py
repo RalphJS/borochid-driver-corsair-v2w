@@ -75,9 +75,6 @@ class Feature:
     async def on_online(self) -> None:
         """The headset answered after a handshake: push everything it needs."""
 
-    async def on_offline(self) -> None:
-        """The headset stopped answering (powered off, out of range)."""
-
     def on_button(self, event: Button) -> None: ...
 
     def on_notice(self, notice: Notice) -> None: ...

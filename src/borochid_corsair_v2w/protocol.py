@@ -34,8 +34,19 @@ class Endpoint(IntEnum):
 class Command(IntEnum):
     GET = 0x01
     SET = 0x02
+    CLOSE = 0x05
     RGB = 0x06
-    LED_INIT = 0x0D
+    READ = 0x08
+    OPEN = 0x0D  # a resource on a handle; led_init() opens lighting on handle 0
+
+
+class Resource(IntEnum):
+    """Data resources, read through a handle (open, read, close)."""
+
+    HEADSET_ID = 0x05  # 8 bytes, the same over the cable and over the radio
+
+
+ID_HANDLE = 0x02  # lighting uses handle 0
 
 
 class Op(IntEnum):
@@ -67,27 +78,44 @@ def set_mode(endpoint: Endpoint, mode: Mode) -> bytes:
     return frame(endpoint, Command.GET, Op.SOFTWARE_MODE, 0x00, mode)
 
 
-def rgb(zones: list[tuple[int, int, int]]) -> bytes:
+def rgb(zones: list[tuple[int, int, int]], endpoint: Endpoint = Endpoint.HEADSET) -> bytes:
     """All zones are written in one frame, grouped by channel: R of every zone,
     then G, then B."""
     data = [zone[ch] for ch in range(3) for zone in zones]
-    return frame(Endpoint.HEADSET, Command.RGB, 0x00, len(data), 0x00, 0x00, 0x00, *data)
+    return frame(endpoint, Command.RGB, 0x00, len(data), 0x00, 0x00, 0x00, *data)
 
 
-def led_init() -> bytes:
-    return frame(Endpoint.HEADSET, Command.LED_INIT, 0x00, 0x01)
+def led_init(endpoint: Endpoint = Endpoint.HEADSET) -> bytes:
+    return frame(endpoint, Command.OPEN, 0x00, 0x01)
 
 
-def sidetone(level: int) -> list[bytes]:
+def sidetone(level: int, endpoint: Endpoint = Endpoint.HEADSET) -> list[bytes]:
     """Sidetone needs ANC off; level 0 turns sidetone off and ANC back on.
     The device scale is 0-1000 in steps of 10."""
     off = level == 0
     raw = level * 10
     return [
-        frame(Endpoint.HEADSET, Command.GET, Op.ANC, *((0x00, 0x01) if off else ())),
-        frame(Endpoint.HEADSET, Command.GET, Op.SIDETONE_ENABLE, *((0x00, 0x01) if off else ())),
-        frame(Endpoint.HEADSET, Command.GET, Op.SIDETONE_LEVEL, 0x00, raw & 0xFF, raw >> 8),
+        frame(endpoint, Command.GET, Op.ANC, *((0x00, 0x01) if off else ())),
+        frame(endpoint, Command.GET, Op.SIDETONE_ENABLE, *((0x00, 0x01) if off else ())),
+        frame(endpoint, Command.GET, Op.SIDETONE_LEVEL, 0x00, raw & 0xFF, raw >> 8),
     ]
+
+
+def read_resource(endpoint: Endpoint, resource: Resource, handle: int = ID_HANDLE) -> list[bytes]:
+    """Open, read, close: the reply to the READ frame carries the data at
+    offset 4. Closing first frees a handle left open by an interrupted read."""
+    return [
+        frame(endpoint, Command.CLOSE, 0x01, handle),
+        frame(endpoint, Command.OPEN, handle, resource),
+        frame(endpoint, Command.READ, handle),
+        frame(endpoint, Command.CLOSE, 0x01, handle),
+    ]
+
+
+def headset_id(data: bytes) -> str | None:
+    """The headset's own ID from a HEADSET_ID read (all zeros: none)."""
+    raw = data[4:12]
+    return raw.hex().upper() if len(raw) == 8 and any(raw) else None
 
 
 # -- input -------------------------------------------------------------------

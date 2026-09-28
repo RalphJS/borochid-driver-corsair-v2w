@@ -41,7 +41,7 @@ class ProfileError(ValueError):
 
 class Link(StrEnum):
     WIRELESS = "wireless"  # through the dongle: V2W available
-    WIRED = "wired"  # USB cable: plain USB audio, no V2W
+    WIRED = "wired"  # USB cable: V2W on the dongle's endpoint
     # The dongle with no headset linked. A Virtuoso SE dongle re-enumerates
     # as a different product (0a46) while its headset is off; nothing to
     # talk to, and the manifest matches it with "channel": null.

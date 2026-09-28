@@ -5,7 +5,7 @@ import pytest
 from borochid_corsair_v2w import protocol
 from borochid_corsair_v2w.profile import Link, Profile, ProfileError
 
-from conftest import MANIFEST
+from conftest import MANIFEST, RECEIVER_MANIFEST
 
 
 def with_v2w(**changes):
@@ -56,7 +56,7 @@ def test_input_classification():
 
 
 def test_standby_products_must_have_no_channel():
-    m = copy.deepcopy(MANIFEST)
-    m["match"][2].pop("channel")
+    m = copy.deepcopy(RECEIVER_MANIFEST)
+    m["match"][1].pop("channel")
     with pytest.raises(ProfileError, match="standby products need"):
         Profile.from_manifest(m)

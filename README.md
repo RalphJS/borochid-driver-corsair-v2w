@@ -12,12 +12,22 @@ never new driver code.
 ## How it fits
 
 ```
-plug in headset ─► service matches corsair.virtuoso (signed data, downloaded)
-                   └─ driver: corsair-v2w, provided_by: borochid-driver-corsair-v2w
-                        ├─ installed?  ─► HeadsetDriver runs
-                        └─ missing     ─► GUI: "Install borochid-driver-corsair-v2w"
-                                          via PackageKit (signed repos only)
+plug in dongle ─► service matches corsair.virtuoso-receiver (signed data, downloaded)
+                  └─ driver: corsair-v2w-receiver, provided_by: borochid-driver-corsair-v2w
+                       ├─ installed?  ─► ReceiverDriver runs; once the headset
+                       │                 answers it announces it (Driver.pair) and
+                       │                 the service matches corsair.virtuoso,
+                       │                 driver corsair-v2w ─► HeadsetDriver runs
+                       └─ missing     ─► GUI: "Install borochid-driver-corsair-v2w"
+                                         via PackageKit (signed repos only)
+plug in cable  ─► corsair.virtuoso ─► HeadsetDriver (the same features, on the
+                                     dongle's endpoint)
 ```
+
+As in iCUE, the dongle and the headset are two devices: the dongle's card
+says whether its headset is connected (and its firmware), the headset's card
+has its settings, whether it's on its cable or behind the dongle. The user
+can hide the dongle's card.
 
 The driver registers itself as the `corsair-v2w` entry point in the
 `borochid.drivers` group. It is installed as an RPM/deb, so the package
@@ -31,7 +41,8 @@ manager handles signing, updates and root. The service never downloads code.
 | `session.py` | Request/reply over Borochid's push-based channel: write pacing, re-entrant exclusive access, reply matching. |
 | `profile.py` | The device package's `v2w` section, validated. Holds every model-specific fact. |
 | `features/` | `lighting`, `battery`, `sidetone`, `mic_button`: independent units with their own settings, actions and reactions. |
-| `driver.py` | Link state machine (`wired` / `offline` / `online`) that composes the features the profile enables. |
+| `receiver.py` | `ReceiverDriver`, the dongle: link state machine (`standby` / `offline` / `online`), handshake and keep-alive; announces the headset while it answers and hands it its input. |
+| `driver.py` | `HeadsetDriver`, the headset, behind its dongle or on its cable: reads its ID and composes the features the profile enables. Behind the dongle it shares the dongle's session; on the cable it takes the headset over itself. |
 
 Features never call each other. They react to shared state: when `battery`
 publishes a new level, `lighting` recolours the battery zone. Mic mute and
@@ -47,7 +58,8 @@ These were learned the hard way in VirtuosoControl (see NOTICE):
   `receiver_software_mode` exists in case a model needs it.
 * **Software mode kills the mic button until the host handles it, and it
   survives closing the device.** `mic_button` forwards presses to the audio
-  service, and `stop()` always returns both endpoints to hardware mode.
+  service, and the dongle's `stop()` always returns both endpoints to
+  hardware mode (after the headset's, which undoes its own settings first).
 * **The handshake darkens the LEDs.** Lighting is the first feature brought
   online and repaints immediately.
 * **The dongle answering doesn't mean the headset does.** Replies are
@@ -82,8 +94,36 @@ These were learned the hard way in VirtuosoControl (see NOTICE):
 * **Interface order matters.** Standard models speak V2W on HID interface 4
   and the Slipstream receiver only has 3, so device packages use
   `"interface": [4, 3]`.
-* **Wired means no V2W.** On a cable the driver sends nothing, and only host
-  audio applies.
+* **On the cable the headset speaks V2W on the dongle's endpoint.** A
+  cabled Virtuoso SE answers `0x08` (replies from source `00`) the way it
+  answers `0x09` through the dongle: battery, charge, lighting, software
+  mode (as OpenLinkHub drives it). The headset driver addresses its
+  `target` endpoint, and on the cable does the dongle driver's part itself:
+  software mode, the keep-alive, and hardware mode again on stop.
+  Hardware sidetone is only tried through the dongle; on the cable the
+  sound card's sidetone is there.
+* **The headset has its own ID.** Data resource `0x05` holds 8 bytes that
+  identify the headset whichever way it is connected. On the cable it is
+  read on the dongle's endpoint (`0x08`, replies from source `00`), through
+  the dongle on the headset's (`0x09`, source `01`). Read with open
+  (`0d <handle> 05`), read (`08 <handle>`), close (`05 01 <handle>`), on
+  handle 2 (lighting uses 0). The headset driver passes it to
+  `identify()`, so the service shows the headset once and its settings
+  follow it between cable and dongle. The dongle's own USB serial differs
+  from the headset's, and none of the single-value properties
+  (`02 <prop>`) carries a serial: `0x11`/`0x12` are the VID/PID, `0x13`
+  the firmware (`a.b.c` from its first three bytes).
+* **The dongle's status LED is the firmware's.** White while the headset
+  is linked, blinking red while it searches (plugged in with no headset,
+  or the link lost, e.g. out of range), dark once the headset is switched
+  off: a clean power-off tells the dongle, which then re-enumerates as its
+  standby product. Nothing here drives it; only receiver software mode
+  would turn it off (see above).
+* **One session for two devices.** The headset behind the dongle talks
+  through the dongle's node, and the device answers whatever was asked
+  last. Both drivers therefore use the dongle's `Session` (passed along
+  with the paired channel); the dongle's driver feeds it every reply and
+  hands the headset its button and status reports.
 
 ## Adding a model
 
@@ -102,9 +142,11 @@ python3 -m venv --system-site-packages .venv
 .venv/bin/pytest
 ```
 
-The tests drive the real `HeadsetDriver` against `FakeHeadset`
-(`tests/conftest.py`), which replies in the format captured from real
-hardware and models the behaviour listed above.
+The tests drive the real `ReceiverDriver` and `HeadsetDriver` against
+`FakeHeadset` (`tests/conftest.py`), which replies in the format captured
+from real hardware and models the behaviour listed above. `Rig` wires them
+up the way the service does: the headset appears on a `PairedChannel` when
+the dongle announces it and is stopped before the dongle.
 
 To learn how a dongle behaves, capture it read-only next to the running
 service and mark your actions (type `off`/`on` + Enter):
