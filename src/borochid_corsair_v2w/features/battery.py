@@ -41,9 +41,6 @@ class Battery(Feature):
     def initial_state(self):
         return {"battery": None, "charging": None}
 
-    def actions(self):
-        return {"refresh_battery": lambda _params: self.refresh()}
-
     async def refresh(self) -> int | None:
         if not self.driver.online:
             raise RuntimeError("headset is offline")
