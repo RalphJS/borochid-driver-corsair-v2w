@@ -1,5 +1,5 @@
 Name:           borochid-driver-corsair-v2w
-Version:        0.1.0
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        Borochid driver for Corsair V2W wireless headsets
 License:        Apache-2.0
@@ -47,5 +47,9 @@ install -Dpm0644 udev/70-borochid-corsair-v2w.rules %{buildroot}%{_udevrulesdir}
 %{_udevrulesdir}/70-borochid-corsair-v2w.rules
 
 %changelog
+* Sun Sep 27 2026 Rodolfo Justiniano <rodolfo@beglaux.com> - 0.2.0-1
+- The dongle is a device of its own (corsair-v2w-receiver) that announces
+  the headset behind it; the headset reads its own ID on either link
+
 * Sun Sep 27 2026 Rodolfo Justiniano <rodolfo@beglaux.com> - 0.1.0-1
 - Initial package

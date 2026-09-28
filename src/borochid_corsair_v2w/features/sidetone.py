@@ -28,7 +28,8 @@ class Sidetone(Feature):
         return {"sidetone": Setting(percent, None), "sidetone_off_on_exit": Setting(boolean, True)}
 
     def initial_state(self):
-        # No V2W on a cable; otherwise assumed until the headset says otherwise.
+        # Untried on the cable (host audio has a sidetone there); through the
+        # dongle assumed until the headset says otherwise.
         return {"sidetone_supported": self.driver.link is Link.WIRELESS}
 
     async def _push(self, level: int) -> None:
@@ -37,8 +38,8 @@ class Sidetone(Feature):
         if self.setting("sidetone_supported") is False:
             raise Unsupported("this headset does not support hardware sidetone; use the sound card sidetone")
         session, timeout = self.driver.session, self.driver.profile.reply_timeout_s
-        for frame in protocol.sidetone(level):
-            status = await session.status(frame, Command.GET, timeout)
+        for frame in protocol.sidetone(level, self.driver.target):
+            status = await session.status(frame, Command.GET, timeout, self.driver.target)
             if status not in (0, None):
                 log.warning("%s: headset rejected sidetone (status %02x)", self.driver.channel.ident.uid, status)
                 await self.driver.update({"sidetone_supported": False})

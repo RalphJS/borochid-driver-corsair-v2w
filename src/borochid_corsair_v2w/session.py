@@ -80,9 +80,10 @@ class Session:
                     return parsed
             return None
 
-    async def status(self, frame: bytes, command: int, timeout: float) -> int | None:
+    async def status(self, frame: bytes, command: int, timeout: float, source: Endpoint = Endpoint.HEADSET) -> int | None:
         """Send a headset command and return the status byte of its reply
-        (0 = accepted), or None if the headset did not answer."""
+        (0 = accepted), or None if the headset did not answer. ``source`` is
+        who answers for the headset: the dongle's endpoint on the cable."""
         return await self.request(
-            frame, lambda r: r.data[3] if r.source == Endpoint.HEADSET and r.command == command else None, timeout
+            frame, lambda r: r.data[3] if r.source == source and r.command == command else None, timeout
         )

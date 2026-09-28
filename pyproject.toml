@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "borochid-driver-corsair-v2w"
-version = "0.1.0"
+version = "0.2.0"
 description = "Borochid driver for Corsair wireless headsets using the V2W HID protocol"
 readme = "README.md"
 license = "Apache-2.0"
@@ -13,6 +13,7 @@ dependencies = ["borochid-service>=0.1,<0.2"]
 
 [project.entry-points."borochid.drivers"]
 corsair-v2w = "borochid_corsair_v2w.driver:HeadsetDriver"
+corsair-v2w-receiver = "borochid_corsair_v2w.receiver:ReceiverDriver"
 
 [project.optional-dependencies]
 test = ["pytest>=8"]

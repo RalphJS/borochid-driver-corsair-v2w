@@ -74,7 +74,8 @@ class Lighting(Feature):
         colours = self.colours()
         if colours == self._last and not force:
             return
-        frames = [protocol.rgb(colours)] if self._leds_ready else [protocol.led_init(), protocol.rgb(colours)]
+        target = self.driver.target
+        frames = [protocol.rgb(colours, target)] if self._leds_ready else [protocol.led_init(target), protocol.rgb(colours, target)]
         await self.driver.session.send(*frames)
         self._leds_ready = True
         self._last = colours
@@ -83,10 +84,6 @@ class Lighting(Feature):
         # The handshake leaves the LEDs dark; repaint straight away.
         self._leds_ready = False
         await self.refresh(force=True)
-
-    async def on_offline(self) -> None:
-        self._last = None
-        self._leds_ready = False
 
     async def on_changed(self, keys: set[str]) -> None:
         if "battery" in keys:

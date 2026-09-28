@@ -48,15 +48,15 @@ class Battery(Feature):
         level = None
         for _ in range(self.samples):
             reading = await session.request(
-                protocol.request(Op.BATTERY),
-                lambda r: protocol.battery_percent(r.word()) if r.answers(Command.SET) else None,
+                protocol.request(Op.BATTERY, self.driver.target),
+                lambda r: protocol.battery_percent(r.word()) if r.answers(Command.SET, self.driver.target) else None,
                 timeout,
             )
             if reading is not None:
                 level = reading
         charging = await session.request(
-            protocol.request(Op.CHARGE),
-            lambda r: protocol.charge_state(r.word()) if r.answers(Command.SET) else None,
+            protocol.request(Op.CHARGE, self.driver.target),
+            lambda r: protocol.charge_state(r.word()) if r.answers(Command.SET, self.driver.target) else None,
             timeout * 2,
         )
         changes = {}
@@ -82,9 +82,6 @@ class Battery(Feature):
 
     async def on_online(self) -> None:
         await self.refresh()
-
-    async def on_offline(self) -> None:
-        await self.driver.update({"battery": None, "charging": None})
 
     def on_notice(self, notice: Notice) -> None:
         if notice.op == Op.BATTERY and (level := protocol.battery_percent(notice.value)) is not None:
